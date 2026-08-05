@@ -1,26 +1,42 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { TipoEquipo } from './entities/tipo-equipo.entity';
 import { CreateTipoEquipoDto } from './dto/create-tipo-equipo.dto';
 import { UpdateTipoEquipoDto } from './dto/update-tipo-equipo.dto';
 
 @Injectable()
 export class TipoEquipoService {
+  constructor(
+    @InjectRepository(TipoEquipo)
+    private readonly tipoEquipoRepository: Repository<TipoEquipo>,
+  ) {}
+
   create(createTipoEquipoDto: CreateTipoEquipoDto) {
-    return 'This action adds a new tipoEquipo';
+    const tipoEquipo = this.tipoEquipoRepository.create(createTipoEquipoDto);
+    return this.tipoEquipoRepository.save(tipoEquipo);
   }
 
   findAll() {
-    return `This action returns all tipoEquipo`;
+    return this.tipoEquipoRepository.find();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} tipoEquipo`;
+  async findOne(id: number) {
+    const tipoEquipo = await this.tipoEquipoRepository.findOne({ where: { id } });
+    if (!tipoEquipo) {
+      throw new NotFoundException(`Tipo de equipo #${id} no encontrado`);
+    }
+    return tipoEquipo;
   }
 
-  update(id: number, updateTipoEquipoDto: UpdateTipoEquipoDto) {
-    return `This action updates a #${id} tipoEquipo`;
+  async update(id: number, updateTipoEquipoDto: UpdateTipoEquipoDto) {
+    const tipoEquipo = await this.findOne(id);
+    Object.assign(tipoEquipo, updateTipoEquipoDto);
+    return this.tipoEquipoRepository.save(tipoEquipo);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} tipoEquipo`;
+  async remove(id: number) {
+    const tipoEquipo = await this.findOne(id);
+    return this.tipoEquipoRepository.remove(tipoEquipo);
   }
 }

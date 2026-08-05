@@ -1,26 +1,77 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Equipo } from './entities/equipo.entity';
 import { CreateEquipoDto } from './dto/create-equipo.dto';
 import { UpdateEquipoDto } from './dto/update-equipo.dto';
 
 @Injectable()
 export class EquipoService {
+  constructor(
+    @InjectRepository(Equipo)
+    private readonly equipoRepository: Repository<Equipo>,
+  ) {}
+
   create(createEquipoDto: CreateEquipoDto) {
-    return 'This action adds a new equipo';
+    const equipo = this.equipoRepository.create({
+      codigo: createEquipoDto.codigo,
+      modelo: createEquipoDto.modelo,
+      nroSerie: createEquipoDto.nroSerie,
+      mac: createEquipoDto.mac,
+      ip: createEquipoDto.ip,
+      pppoeUsuario: createEquipoDto.pppoeUsuario,
+      pppoePassword: createEquipoDto.pppoePassword,
+      estado: createEquipoDto.estado,
+      tipoEquipo: createEquipoDto.tipoEquipoId
+        ? { id: createEquipoDto.tipoEquipoId }
+        : null,
+      marca: createEquipoDto.marcaId ? { id: createEquipoDto.marcaId } : null,
+      cliente: createEquipoDto.clienteId
+        ? { id: createEquipoDto.clienteId }
+        : null,
+    } as Partial<Equipo>);
+
+    return this.equipoRepository.save(equipo);
   }
 
   findAll() {
-    return `This action returns all equipo`;
+    return this.equipoRepository.find({
+      relations: { tipoEquipo: true, marca: true, cliente: true },
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} equipo`;
+  async findOne(id: number) {
+    const equipo = await this.equipoRepository.findOne({
+      where: { id },
+      relations: { tipoEquipo: true, marca: true, cliente: true },
+    });
+
+    if (!equipo) {
+      throw new NotFoundException(`Equipo #${id} no encontrado`);
+    }
+
+    return equipo;
   }
 
-  update(id: number, updateEquipoDto: UpdateEquipoDto) {
-    return `This action updates a #${id} equipo`;
+  async update(id: number, updateEquipoDto: UpdateEquipoDto) {
+    const equipo = await this.findOne(id);
+
+    Object.assign(equipo, {
+      ...updateEquipoDto,
+      tipoEquipo: updateEquipoDto.tipoEquipoId
+        ? { id: updateEquipoDto.tipoEquipoId }
+        : equipo.tipoEquipo,
+      marca: updateEquipoDto.marcaId ? { id: updateEquipoDto.marcaId } : equipo.marca,
+      cliente: updateEquipoDto.clienteId
+        ? { id: updateEquipoDto.clienteId }
+        : equipo.cliente,
+    });
+
+    return this.equipoRepository.save(equipo);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} equipo`;
+  async remove(id: number) {
+    const equipo = await this.findOne(id);
+    return this.equipoRepository.remove(equipo);
   }
 }

@@ -1,26 +1,42 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Marca } from './entities/marca.entity';
 import { CreateMarcaDto } from './dto/create-marca.dto';
 import { UpdateMarcaDto } from './dto/update-marca.dto';
 
 @Injectable()
 export class MarcaService {
+  constructor(
+    @InjectRepository(Marca)
+    private readonly marcaRepository: Repository<Marca>,
+  ) {}
+
   create(createMarcaDto: CreateMarcaDto) {
-    return 'This action adds a new marca';
+    const marca = this.marcaRepository.create(createMarcaDto);
+    return this.marcaRepository.save(marca);
   }
 
   findAll() {
-    return `This action returns all marca`;
+    return this.marcaRepository.find();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} marca`;
+  async findOne(id: number) {
+    const marca = await this.marcaRepository.findOne({ where: { id } });
+    if (!marca) {
+      throw new NotFoundException(`Marca #${id} no encontrada`);
+    }
+    return marca;
   }
 
-  update(id: number, updateMarcaDto: UpdateMarcaDto) {
-    return `This action updates a #${id} marca`;
+  async update(id: number, updateMarcaDto: UpdateMarcaDto) {
+    const marca = await this.findOne(id);
+    Object.assign(marca, updateMarcaDto);
+    return this.marcaRepository.save(marca);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} marca`;
+  async remove(id: number) {
+    const marca = await this.findOne(id);
+    return this.marcaRepository.remove(marca);
   }
 }
