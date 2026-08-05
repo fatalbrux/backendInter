@@ -8,6 +8,8 @@ async function bootstrap() {
   //habilitando VALIDACION con class-validation
   app.useGlobalPipes(new ValidationPipe());
 
+  app.enableCors();
+
   //habilitando swagger
 
   const config = new DocumentBuilder()
