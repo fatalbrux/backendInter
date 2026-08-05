@@ -1,7 +1,8 @@
 import {
   Entity,
   PrimaryGeneratedColumn,
-  Column
+  Column,
+  CreateDateColumn,
 } from 'typeorm';
 
 export enum RolUsuario {
@@ -15,7 +16,7 @@ export enum EstadoUsuario {
   INACTIVO = 'Inactivo',
 }
 
-@Entity()
+@Entity('usuarios')
 export class Usuario {
   @PrimaryGeneratedColumn()
   id: number;
@@ -26,8 +27,8 @@ export class Usuario {
   @Column({ unique: true })
   usuario: string; // ej: admin
 
-  @Column({ name: 'password_hash' })
-  passwordHash: string;
+  @Column({ name: 'password' })
+  password: string;
 
   @Column({ nullable: true })
   email: string;
@@ -37,4 +38,7 @@ export class Usuario {
 
   @Column({ type: 'enum', enum: EstadoUsuario, default: EstadoUsuario.ACTIVO })
   estado: EstadoUsuario;
+
+  @CreateDateColumn({ name: 'creado_en' })
+  creadoEn: Date;
 }

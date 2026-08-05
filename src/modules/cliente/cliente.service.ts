@@ -1,26 +1,63 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Cliente } from './entities/cliente.entity';
 import { CreateClienteDto } from './dto/create-cliente.dto';
 import { UpdateClienteDto } from './dto/update-cliente.dto';
 
 @Injectable()
 export class ClienteService {
-  create(createClienteDto: CreateClienteDto) {
-    return 'This action adds a new cliente';
+  constructor(
+    @InjectRepository(Cliente)
+    private readonly clienteRepository: Repository<Cliente>,
+  ) {}
+
+  async create(createClienteDto: CreateClienteDto) {
+    const existe = await this.clienteRepository.findOne({
+      where: { codigo: createClienteDto.codigo },
+    });
+    if (existe) {
+      throw new ConflictException(
+        `Ya existe un cliente con el código ${createClienteDto.codigo}`,
+      );
+    }
+
+    const cliente = this.clienteRepository.create({
+      ...createClienteDto,
+      zona: createClienteDto.zonaId ? ({ id: createClienteDto.zonaId } as any) : null,
+      plan: createClienteDto.planId ? ({ id: createClienteDto.planId } as any) : null,
+    });
+
+    return this.clienteRepository.save(cliente);
   }
 
   findAll() {
-    return `This action returns all cliente`;
+    return this.clienteRepository.find({ relations: { zona: true, plan: true } });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} cliente`;
+  async findOne(id: number) {
+    const cliente = await this.clienteRepository.findOne({
+      where: { id },
+      relations: { zona: true, plan: true },
+    });
+    if (!cliente) {
+      throw new NotFoundException(`Cliente #${id} no encontrado`);
+    }
+    return cliente;
   }
 
-  update(id: number, updateClienteDto: UpdateClienteDto) {
-    return `This action updates a #${id} cliente`;
+  async update(id: number, updateClienteDto: UpdateClienteDto) {
+    const cliente = await this.findOne(id);
+    Object.assign(cliente, {
+      ...updateClienteDto,
+      zona: updateClienteDto.zonaId ? { id: updateClienteDto.zonaId } : cliente.zona,
+      plan: updateClienteDto.planId ? { id: updateClienteDto.planId } : cliente.plan,
+    });
+    return this.clienteRepository.save(cliente);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} cliente`;
+  async remove(id: number) {
+    const cliente = await this.findOne(id);
+    return this.clienteRepository.remove(cliente);
   }
 }

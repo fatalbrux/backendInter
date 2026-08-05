@@ -1,26 +1,61 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Pago } from './entities/pago.entity';
 import { CreatePagoDto } from './dto/create-pago.dto';
 import { UpdatePagoDto } from './dto/update-pago.dto';
 
 @Injectable()
 export class PagoService {
-  create(createPagoDto: CreatePagoDto) {
-    return 'This action adds a new pago';
+  constructor(
+    @InjectRepository(Pago)
+    private readonly pagoRepository: Repository<Pago>,
+  ) {}
+
+  async create(createPagoDto: CreatePagoDto) {
+    const nroRecibo = createPagoDto.nroRecibo ?? (await this.generarNroRecibo());
+
+    const pago = this.pagoRepository.create({
+      ...createPagoDto,
+      nroRecibo,
+      cliente: { id: createPagoDto.clienteId } as any,
+      usuario: createPagoDto.usuarioId ? ({ id: createPagoDto.usuarioId } as any) : null,
+    });
+
+    // TODO: aquí es donde se debería actualizar cliente.estado y
+    // cliente.proximo_vencimiento (ClienteService), y opcionalmente
+    // disparar la reactivación PPPoE en el router si el cliente tenía corte.
+    return this.pagoRepository.save(pago);
   }
 
   findAll() {
-    return `This action returns all pago`;
+    return this.pagoRepository.find({ relations: { cliente: true, usuario: true } });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} pago`;
+  async findOne(id: number) {
+    const pago = await this.pagoRepository.findOne({
+      where: { id },
+      relations: { cliente: true, usuario: true },
+    });
+    if (!pago) {
+      throw new NotFoundException(`Pago #${id} no encontrado`);
+    }
+    return pago;
   }
 
-  update(id: number, updatePagoDto: UpdatePagoDto) {
-    return `This action updates a #${id} pago`;
+  async update(id: number, updatePagoDto: UpdatePagoDto) {
+    const pago = await this.findOne(id);
+    Object.assign(pago, updatePagoDto);
+    return this.pagoRepository.save(pago);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} pago`;
+  async remove(id: number) {
+    const pago = await this.findOne(id);
+    return this.pagoRepository.remove(pago);
+  }
+
+  private async generarNroRecibo(): Promise<string> {
+    const ultimo = await this.pagoRepository.count();
+    return `REC-${String(ultimo + 1).padStart(4, '0')}`;
   }
 }
