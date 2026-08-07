@@ -11,6 +11,7 @@ import { InstalacionModule } from './modules/instalacion/instalacion.module';
 import { PagoModule } from './modules/pago/pago.module';
 import { UsuarioModule } from './modules/usuario/usuario.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [ConfigModule.forRoot(), TypeOrmModule.forRoot({type: 'postgres',
@@ -21,7 +22,7 @@ import { AuthModule } from './modules/auth/auth.module';
   database: 'bd_internet',
   entities: [__dirname + '/**/*.entity{.ts,.js}'],
   synchronize: false, }), 
-  UbicacionesModule, CatalogosModule, ClienteModule, EquipoModule, InstalacionModule, PagoModule, UsuarioModule, AuthModule],
+  UbicacionesModule, CatalogosModule, ClienteModule, EquipoModule, InstalacionModule, PagoModule, UsuarioModule, AuthModule, DashboardModule],
   controllers: [AppController],
   providers: [AppService],
 })
