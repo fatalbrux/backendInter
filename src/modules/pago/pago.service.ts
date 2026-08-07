@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Pago } from './entities/pago.entity';
+import { Cliente, EstadoCliente } from '../cliente/entities/cliente.entity';
 import { CreatePagoDto } from './dto/create-pago.dto';
 import { UpdatePagoDto } from './dto/update-pago.dto';
 
@@ -10,6 +11,9 @@ export class PagoService {
   constructor(
     @InjectRepository(Pago)
     private readonly pagoRepository: Repository<Pago>,
+  @InjectRepository(Cliente)
+  private readonly clienteRepository: Repository<Cliente>,
+
   ) {}
 
   async create(createPagoDto: CreatePagoDto) {
@@ -25,7 +29,18 @@ export class PagoService {
     // TODO: aquí es donde se debería actualizar cliente.estado y
     // cliente.proximo_vencimiento (ClienteService), y opcionalmente
     // disparar la reactivación PPPoE en el router si el cliente tenía corte.
-    return this.pagoRepository.save(pago);
+    const pagoGuardado = await this.pagoRepository.save(pago);
+
+if (createPagoDto.nuevoVencimiento) {
+  await this.clienteRepository.update(createPagoDto.clienteId, {
+    proximoVencimiento: createPagoDto.nuevoVencimiento,
+    estado: EstadoCliente.ACTIVO,
+  });
+}
+
+return pagoGuardado;
+  
+  
   }
 
   findAll() {
