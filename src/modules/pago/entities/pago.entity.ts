@@ -9,6 +9,13 @@ import {
 import { Cliente } from '../../cliente/entities/cliente.entity';
 import { Usuario } from '../../usuario/entities/usuario.entity';
 
+export enum BancoPago {
+  UNION = 'Banco Unión',
+  BNB = 'Banco BNB',
+  PRODEM = 'Banco Prodem',
+  TIGO_MONEY = 'Tigo Money',
+}
+
 export enum MetodoPago {
   EFECTIVO = 'Efectivo',
   CODIGO_QR = 'Código QR',
@@ -47,6 +54,9 @@ export class Pago {
 
   @Column({ name: 'nuevo_vencimiento', type: 'date', nullable: true })
   nuevoVencimiento: string;
+
+  @Column({ type: 'enum', enum: BancoPago, nullable: true })
+  banco: BancoPago | null;
 
   @Column({ nullable: true })
   notas: string;

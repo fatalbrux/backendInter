@@ -16,6 +16,22 @@ export class PagoService {
 
   ) {}
 
+ private calcularEstadoPorVencimiento(nuevoVencimiento: string): EstadoCliente {
+  const vencimiento = new Date(nuevoVencimiento);
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  if (vencimiento >= hoy) return EstadoCliente.ACTIVO;
+
+  let meses = (hoy.getFullYear() - vencimiento.getFullYear()) * 12 + (hoy.getMonth() - vencimiento.getMonth());
+  if (hoy.getDate() < vencimiento.getDate()) meses -= 1;
+  meses = Math.max(meses, 1);
+
+  if (meses <= 1) return EstadoCliente.ACTIVO;
+  if (meses === 2) return EstadoCliente.SUSPENDIDO;
+  return EstadoCliente.CORTE;
+}
+
   async create(createPagoDto: CreatePagoDto) {
     const nroRecibo = createPagoDto.nroRecibo ?? (await this.generarNroRecibo());
 
@@ -32,9 +48,11 @@ export class PagoService {
     const pagoGuardado = await this.pagoRepository.save(pago);
 
 if (createPagoDto.nuevoVencimiento) {
+  const nuevoEstado = this.calcularEstadoPorVencimiento(createPagoDto.nuevoVencimiento);
+
   await this.clienteRepository.update(createPagoDto.clienteId, {
     proximoVencimiento: createPagoDto.nuevoVencimiento,
-    estado: EstadoCliente.ACTIVO,
+    estado: nuevoEstado,
   });
 }
 

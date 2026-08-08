@@ -38,6 +38,9 @@ export class Cliente {
   @Column({ nullable: true })
   email: string;
 
+  @Column({ type: 'varchar', nullable: true })
+  usuario: string | null;
+
   @ManyToOne(() => Zona, { nullable: true, eager: true })
   @JoinColumn({ name: 'zona_id' })
   zona: Zona | null;

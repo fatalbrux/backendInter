@@ -31,6 +31,10 @@ export class CreateClienteDto {
   email?: string;
 
   @IsOptional()
+  @IsString()
+  usuario?: string;
+
+  @IsOptional()
   @IsInt()
   zonaId?: number;
 

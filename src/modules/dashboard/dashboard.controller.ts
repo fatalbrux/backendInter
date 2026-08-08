@@ -24,4 +24,9 @@ export class DashboardController {
     morosos() {
     return this.dashboardService.morosos();
     }
+
+    @Get('actualizar-estados-manual')
+actualizarManual() {
+  return this.dashboardService.actualizarEstadosAutomaticos();
+}
 }
