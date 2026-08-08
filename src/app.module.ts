@@ -29,7 +29,7 @@ import { AuthModule } from './modules/auth/auth.module';
         password: config.get('DB_PASSWORD'),
         database: config.get('DB_DATABASE'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: false,
+        synchronize: true,
       }),
     }),
     UbicacionesModule,
