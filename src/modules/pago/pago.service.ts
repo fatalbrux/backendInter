@@ -32,33 +32,28 @@ export class PagoService {
   return EstadoCliente.CORTE;
 }
 
-  async create(createPagoDto: CreatePagoDto) {
+ async create(createPagoDto: CreatePagoDto, usuarioId: number) {
     const nroRecibo = createPagoDto.nroRecibo ?? (await this.generarNroRecibo());
 
     const pago = this.pagoRepository.create({
       ...createPagoDto,
       nroRecibo,
       cliente: { id: createPagoDto.clienteId } as any,
-      usuario: createPagoDto.usuarioId ? ({ id: createPagoDto.usuarioId } as any) : null,
+      usuario: { id: usuarioId } as any,
     });
 
-    // TODO: aquí es donde se debería actualizar cliente.estado y
-    // cliente.proximo_vencimiento (ClienteService), y opcionalmente
-    // disparar la reactivación PPPoE en el router si el cliente tenía corte.
     const pagoGuardado = await this.pagoRepository.save(pago);
 
-if (createPagoDto.nuevoVencimiento) {
-  const nuevoEstado = this.calcularEstadoPorVencimiento(createPagoDto.nuevoVencimiento);
+    if (createPagoDto.nuevoVencimiento) {
+      const nuevoEstado = this.calcularEstadoPorVencimiento(createPagoDto.nuevoVencimiento);
 
-  await this.clienteRepository.update(createPagoDto.clienteId, {
-    proximoVencimiento: createPagoDto.nuevoVencimiento,
-    estado: nuevoEstado,
-  });
-}
+      await this.clienteRepository.update(createPagoDto.clienteId, {
+        proximoVencimiento: createPagoDto.nuevoVencimiento,
+        estado: nuevoEstado,
+      });
+    }
 
-return pagoGuardado;
-  
-  
+    return pagoGuardado;
   }
 
   findAll() {

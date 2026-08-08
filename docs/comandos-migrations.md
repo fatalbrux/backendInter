@@ -22,4 +22,5 @@ npm run migration:create --name=NombreMigration
 
 ```
 npm run migration:revert
+
 ```
