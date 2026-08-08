@@ -12,9 +12,11 @@ import { PagoModule } from './modules/pago/pago.module';
 import { UsuarioModule } from './modules/usuario/usuario.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
-  imports: [ConfigModule.forRoot(), TypeOrmModule.forRoot({type: 'postgres',
+  imports: [ConfigModule.forRoot(),
+    ScheduleModule.forRoot(), TypeOrmModule.forRoot({type: 'postgres',
   host: 'localhost',
   port: 5432,
   username: 'postgres',

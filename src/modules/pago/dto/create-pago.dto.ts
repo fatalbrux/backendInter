@@ -6,7 +6,7 @@ import {
   IsNumber,
   IsEnum,
 } from 'class-validator';
-import { MetodoPago } from '../entities/pago.entity';
+import { MetodoPago, BancoPago } from '../entities/pago.entity';
 
 export class CreatePagoDto {
   @IsOptional()
@@ -33,6 +33,10 @@ export class CreatePagoDto {
   @IsOptional()
   @IsEnum(MetodoPago)
   metodoPago?: MetodoPago;
+
+  @IsOptional()
+  @IsEnum(BancoPago)
+  banco?: BancoPago;
 
   @IsOptional()
   @IsDateString()

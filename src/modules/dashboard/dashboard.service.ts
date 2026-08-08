@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Cliente, EstadoCliente } from '../cliente/entities/cliente.entity';
 import { Pago } from '../pago/entities/pago.entity';
 import { Equipo, EstadoEquipo } from '../equipo/entities/equipo.entity';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class DashboardService {
@@ -88,43 +89,71 @@ export class DashboardService {
     };
   }
 
-  async proximosVencimientos() {
-    const hoy = new Date();
-    const enUnaSemana = new Date(hoy);
-    enUnaSemana.setDate(hoy.getDate() + 7);
+async proximosVencimientos() {
+  const clientes = await this.clienteRepo.find({ relations: { zona: true, plan: true } });
 
-    return this.clienteRepo
-      .createQueryBuilder('c')
-      .leftJoinAndSelect('c.zona', 'zona')
-      .leftJoinAndSelect('c.plan', 'plan')
-      .where('c.proximoVencimiento BETWEEN :hoy AND :limite', {
-        hoy: hoy.toISOString().slice(0, 10),
-        limite: enUnaSemana.toISOString().slice(0, 10),
-      })
-      .orderBy('c.proximoVencimiento', 'ASC')
-      .getMany();
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const enUnaSemana = new Date(hoy);
+  enUnaSemana.setDate(hoy.getDate() + 7);
+
+  return clientes
+    .map((c) => ({ cliente: c, efectiva: this.fechaEfectivaVencimiento(c) }))
+    .filter((x) => x.efectiva && x.efectiva >= hoy && x.efectiva <= enUnaSemana)
+    .sort((a, b) => a.efectiva!.getTime() - b.efectiva!.getTime())
+    .map((x) => ({
+      id: x.cliente.id,
+      codigo: x.cliente.codigo,
+      nombres: x.cliente.nombres,
+      apellidos: x.cliente.apellidos,
+      zona: x.cliente.zona?.nombre ?? null,
+      proximoVencimiento: x.efectiva,
+      precioMensual: x.cliente.plan ? Number(x.cliente.plan.precioMensual) : 0,
+    }));
+}
+
+async deudoresConCorte() {
+  const clientes = await this.clienteRepo.find({ relations: { zona: true, plan: true } });
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const resultado: any[] = [];
+
+  for (const c of clientes) {
+    const efectiva = this.fechaEfectivaVencimiento(c);
+    if (!efectiva || efectiva >= hoy) continue;
+
+    let meses = (hoy.getFullYear() - efectiva.getFullYear()) * 12 + (hoy.getMonth() - efectiva.getMonth());
+    if (hoy.getDate() < efectiva.getDate()) meses -= 1;
+    meses = Math.max(meses, 1);
+
+    if (meses < 3) continue;
+
+    const precio = c.plan ? Number(c.plan.precioMensual) : 0;
+
+    resultado.push({
+      id: c.id,
+      codigo: c.codigo,
+      nombres: c.nombres,
+      apellidos: c.apellidos,
+      zona: c.zona?.nombre ?? null,
+      mesesDeuda: meses,
+      deudaTotal: precio * meses,
+    });
   }
 
-  async deudoresConCorte() {
-    // clientes con estado Corte de servicio (3+ meses según tu regla de negocio)
-    return this.clienteRepo
-      .createQueryBuilder('c')
-      .leftJoinAndSelect('c.zona', 'zona')
-      .where('c.estado = :estado', { estado: EstadoCliente.CORTE })
-      .getMany();
-  }
+  return resultado.sort((a, b) => b.mesesDeuda - a.mesesDeuda);
+}
 
-  async morosos() {
+ async morosos() {
   const clientes = await this.clienteRepo
     .createQueryBuilder('c')
     .leftJoinAndSelect('c.zona', 'zona')
     .leftJoinAndSelect('c.plan', 'plan')
-    .where('c.proximoVencimiento IS NOT NULL')
-    .andWhere('c.proximoVencimiento < CURRENT_DATE')
     .getMany();
 
   const ids = clientes.map((c) => c.id);
-
   const ultimosPagos = ids.length
     ? await this.pagoRepo
         .createQueryBuilder('p')
@@ -134,19 +163,25 @@ export class DashboardService {
         .groupBy('p.cliente_id')
         .getRawMany()
     : [];
-
   const mapaUltimoPago = new Map(ultimosPagos.map((p) => [p.clienteId, p.ultimoPago]));
-  const hoy = new Date();
 
-  return clientes.map((c) => {
-    const venc = new Date(c.proximoVencimiento);
-    let meses = (hoy.getFullYear() - venc.getFullYear()) * 12 + (hoy.getMonth() - venc.getMonth());
-    if (hoy.getDate() < venc.getDate()) meses -= 1;
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const resultado: any[] = [];
+
+  for (const c of clientes) {
+    const efectiva = this.fechaEfectivaVencimiento(c);
+    if (!efectiva) continue; // sin ningún dato para calcular, se omite
+    if (efectiva >= hoy) continue; // al día, no es moroso
+
+    let meses = (hoy.getFullYear() - efectiva.getFullYear()) * 12 + (hoy.getMonth() - efectiva.getMonth());
+    if (hoy.getDate() < efectiva.getDate()) meses -= 1;
     meses = Math.max(meses, 1);
 
     const precio = c.plan ? Number(c.plan.precioMensual) : 0;
 
-    return {
+    resultado.push({
       id: c.id,
       codigo: c.codigo,
       nombres: c.nombres,
@@ -158,8 +193,50 @@ export class DashboardService {
       deudaTotal: precio * meses,
       ultimoPago: mapaUltimoPago.get(c.id) ?? null,
       estado: c.estado,
-    };
-  });
+    });
+  }
+
+  return resultado;
+}
+
+private fechaEfectivaVencimiento(c: Cliente): Date | null {
+  if (c.proximoVencimiento) return new Date(c.proximoVencimiento);
+
+  const base = c.fechaPrimerPago ?? c.fechaInstalacion;
+  if (!base) return null;
+
+  const fecha = new Date(base);
+  fecha.setMonth(fecha.getMonth() + 1);
+  return fecha;
+}
+
+
+@Cron(CronExpression.EVERY_DAY_AT_1AM)
+async actualizarEstadosAutomaticos() {
+  const clientes = await this.clienteRepo.find();
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  for (const c of clientes) {
+    const efectiva = this.fechaEfectivaVencimiento(c);
+    if (!efectiva) continue; // sin datos suficientes, no se toca
+
+    let meses = 0;
+    if (efectiva < hoy) {
+      meses = (hoy.getFullYear() - efectiva.getFullYear()) * 12 + (hoy.getMonth() - efectiva.getMonth());
+      if (hoy.getDate() < efectiva.getDate()) meses -= 1;
+      meses = Math.max(meses, 1);
+    }
+
+    let nuevoEstado: EstadoCliente;
+    if (meses <= 1) nuevoEstado = EstadoCliente.ACTIVO;
+    else if (meses === 2) nuevoEstado = EstadoCliente.SUSPENDIDO;
+    else nuevoEstado = EstadoCliente.CORTE;
+
+    if (c.estado !== nuevoEstado) {
+      await this.clienteRepo.update(c.id, { estado: nuevoEstado });
+    }
+  }
 }
 
 
