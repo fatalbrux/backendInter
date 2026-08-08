@@ -10,9 +10,9 @@ import { EquipoModule } from './modules/equipo/equipo.module';
 import { InstalacionModule } from './modules/instalacion/instalacion.module';
 import { PagoModule } from './modules/pago/pago.module';
 import { UsuarioModule } from './modules/usuario/usuario.module';
-import { AuthModule } from './modules/auth/auth.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [ConfigModule.forRoot(),
@@ -24,7 +24,7 @@ import { ScheduleModule } from '@nestjs/schedule';
   database: 'bd_internet',
   entities: [__dirname + '/**/*.entity{.ts,.js}'],
   synchronize: false, }), 
-  UbicacionesModule, CatalogosModule, ClienteModule, EquipoModule, InstalacionModule, PagoModule, UsuarioModule, AuthModule, DashboardModule],
+  UbicacionesModule, CatalogosModule, ClienteModule, EquipoModule, InstalacionModule, PagoModule, UsuarioModule, DashboardModule, AuthModule],
   controllers: [AppController],
   providers: [AppService],
 })
