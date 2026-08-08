@@ -12,27 +12,34 @@ export class EquipoService {
     private readonly equipoRepository: Repository<Equipo>,
   ) {}
 
-  create(createEquipoDto: CreateEquipoDto) {
-    const equipo = this.equipoRepository.create({
-      codigo: createEquipoDto.codigo,
-      modelo: createEquipoDto.modelo,
-      nroSerie: createEquipoDto.nroSerie,
-      mac: createEquipoDto.mac,
-      ip: createEquipoDto.ip,
-      pppoeUsuario: createEquipoDto.pppoeUsuario,
-      pppoePassword: createEquipoDto.pppoePassword,
-      estado: createEquipoDto.estado,
-      tipoEquipo: createEquipoDto.tipoEquipoId
-        ? { id: createEquipoDto.tipoEquipoId }
-        : null,
-      marca: createEquipoDto.marcaId ? { id: createEquipoDto.marcaId } : null,
-      cliente: createEquipoDto.clienteId
-        ? { id: createEquipoDto.clienteId }
-        : null,
-    } as Partial<Equipo>);
+ async create(createEquipoDto: CreateEquipoDto) {
+  const codigo = createEquipoDto.codigo ?? (await this.generarCodigoEquipo());
 
-    return this.equipoRepository.save(equipo);
-  }
+  const equipo = this.equipoRepository.create({
+    codigo,
+    modelo: createEquipoDto.modelo,
+    nroSerie: createEquipoDto.nroSerie,
+    mac: createEquipoDto.mac,
+    ip: createEquipoDto.ip,
+    pppoeUsuario: createEquipoDto.pppoeUsuario,
+    pppoePassword: createEquipoDto.pppoePassword,
+    estado: createEquipoDto.estado,
+    tipoEquipo: createEquipoDto.tipoEquipoId
+      ? { id: createEquipoDto.tipoEquipoId }
+      : null,
+    marca: createEquipoDto.marcaId ? { id: createEquipoDto.marcaId } : null,
+    cliente: createEquipoDto.clienteId
+      ? { id: createEquipoDto.clienteId }
+      : null,
+  } as Partial<Equipo>);
+
+  return this.equipoRepository.save(equipo);
+}
+
+async generarCodigoEquipo(): Promise<string> {
+  const ultimo = await this.equipoRepository.count();
+  return `EQ-${String(ultimo + 1).padStart(3, '0')}`;
+}
 
   findAll() {
     return this.equipoRepository.find({

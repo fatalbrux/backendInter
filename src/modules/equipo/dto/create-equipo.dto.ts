@@ -12,7 +12,7 @@ import { EstadoEquipo } from '../entities/equipo.entity';
 export class CreateEquipoDto {
   @IsString()
   @MaxLength(20)
-  codigo: string;
+  codigo?: string;
 
   @IsOptional()
   @IsInt()

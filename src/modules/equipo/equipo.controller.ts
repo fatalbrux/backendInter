@@ -17,6 +17,13 @@ export class EquipoController {
     return this.equipoService.findAll();
   }
 
+
+  @Get('siguiente-codigo')
+async siguienteCodigo() {
+  const codigo = await this.equipoService.generarCodigoEquipo();
+  return { codigo };
+}
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.equipoService.findOne(+id);

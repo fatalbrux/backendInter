@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Instalacion } from './entities/instalacion.entity';
+import { Equipo, EstadoEquipo } from '../equipo/entities/equipo.entity';
+import { Cliente } from '../cliente/entities/cliente.entity';
 import { CreateInstalacionDto } from './dto/create-instalacion.dto';
 import { UpdateInstalacionDto } from './dto/update-instalacion.dto';
 
@@ -10,9 +12,13 @@ export class InstalacionService {
   constructor(
     @InjectRepository(Instalacion)
     private readonly instalacionRepository: Repository<Instalacion>,
+    @InjectRepository(Equipo)
+    private readonly equipoRepository: Repository<Equipo>,
+    @InjectRepository(Cliente)
+    private readonly clienteRepository: Repository<Cliente>,
   ) {}
 
- create(createInstalacionDto: CreateInstalacionDto, tecnicoId: number) {
+  async create(createInstalacionDto: CreateInstalacionDto, tecnicoId: number) {
     const instalacion = this.instalacionRepository.create({
       fechaInstalacion: createInstalacionDto.fechaInstalacion,
       direccion: createInstalacionDto.direccion,
@@ -23,7 +29,28 @@ export class InstalacionService {
       tecnico: { id: tecnicoId } as any,
     });
 
-    return this.instalacionRepository.save(instalacion);
+    const instalacionGuardada = await this.instalacionRepository.save(instalacion);
+
+    // 1. Marca el equipo como Instalado y lo asocia al cliente
+    await this.equipoRepository.update(createInstalacionDto.equipoId, {
+      estado: EstadoEquipo.INSTALADO,
+      cliente: { id: createInstalacionDto.clienteId } as any,
+    });
+
+    // 2. Si es la primera instalación del cliente y no tiene fechaInstalacion,
+    //    la completa automáticamente (sin bloquear futuras instalaciones distintas)
+    if (createInstalacionDto.fechaInstalacion) {
+      const cliente = await this.clienteRepository.findOne({
+        where: { id: createInstalacionDto.clienteId },
+      });
+      if (cliente && !cliente.fechaInstalacion) {
+        await this.clienteRepository.update(createInstalacionDto.clienteId, {
+          fechaInstalacion: createInstalacionDto.fechaInstalacion,
+        });
+      }
+    }
+
+    return instalacionGuardada;
   }
 
   findAll() {
