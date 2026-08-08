@@ -17,6 +17,7 @@ async function bootstrap() {
   .setDescription("Este backend es el de un sistema de cobros de internet")
   .setVersion("1.0")
   .addTag("Backend Nest")
+  .addBearerAuth()
   .build();
 
   const documentFactory = () => SwaggerModule.createDocument(app, config);

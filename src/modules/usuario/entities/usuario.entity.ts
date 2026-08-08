@@ -27,7 +27,7 @@ export class Usuario {
   @Column({ unique: true })
   usuario: string; // ej: admin
 
-  @Column({ name: 'password' })
+  @Column({ name: 'password', select: false })
   password: string;
 
   @Column({ nullable: true })

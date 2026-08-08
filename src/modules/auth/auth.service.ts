@@ -1,26 +1,39 @@
-import { Injectable } from '@nestjs/common';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
+import { HttpException, Injectable } from '@nestjs/common';
+import { UsuarioService } from '../usuario/usuario.service';
+import { LoginAuthDto } from './dto/login-auth.dto';
+import { JwtService } from '@nestjs/jwt';
+import { hash, compare } from 'bcrypt';
 
 @Injectable()
 export class AuthService {
-  create(createAuthDto: CreateAuthDto) {
-    return 'This action adds a new auth';
-  }
+    constructor(
+        private usuarioService: UsuarioService, 
+        private jwtService: JwtService){}
 
-  findAll() {
-    return `This action returns all auth`;
-  }
 
-  findOne(id: number) {
-    return `This action returns a #${id} auth`;
-  }
+    async login(credenciales: LoginAuthDto){
+        const { email, password } = credenciales;
 
-  update(id: number, updateAuthDto: UpdateAuthDto) {
-    return `This action updates a #${id} auth`;
-  }
+        //buscar usuario por email
+        const usuario = await this.usuarioService.findOneByEmail(email);
 
-  remove(id: number) {
-    return `This action removes a #${id} auth`;
-  }
+        if(!usuario){
+            throw new HttpException("Usuario no encontrado",404);
+        }
+
+        //verificar contraseña
+        const verificarPass = await compare(password, usuario.password);
+        if(!verificarPass){
+                throw new HttpException('contraseña incorrecta',401);
+        }
+
+        //generar JWT
+
+        const payload = {email: email, id:usuario.id};
+        const token = await this.jwtService.sign(payload);
+
+        const { password: _, ...usuarioSinPassword } = usuario;
+        return { access_token: token, usuario: usuarioSinPassword };
+    }
+
 }

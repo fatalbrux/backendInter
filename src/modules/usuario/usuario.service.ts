@@ -61,4 +61,19 @@ export class UsuarioService {
     const usuario = await this.findOne(id);
     return this.usuarioRepository.remove(usuario);
   }
+
+  //para el login, busqueda por email
+  async findOneByEmail(email: string) {
+  const usuario = await this.usuarioRepository
+    .createQueryBuilder('usuario')
+    .addSelect('usuario.password')
+    .where('usuario.email = :email', { email })
+    .getOne();
+
+  if (!usuario) {
+    throw new NotFoundException(`Usuario con email ${email} no encontrado`);
+  }
+  return usuario;
+}
+
 }
