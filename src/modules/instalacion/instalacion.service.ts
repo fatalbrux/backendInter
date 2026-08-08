@@ -12,7 +12,7 @@ export class InstalacionService {
     private readonly instalacionRepository: Repository<Instalacion>,
   ) {}
 
-  create(createInstalacionDto: CreateInstalacionDto) {
+ create(createInstalacionDto: CreateInstalacionDto, tecnicoId: number) {
     const instalacion = this.instalacionRepository.create({
       fechaInstalacion: createInstalacionDto.fechaInstalacion,
       direccion: createInstalacionDto.direccion,
@@ -20,9 +20,7 @@ export class InstalacionService {
       cliente: { id: createInstalacionDto.clienteId } as any,
       equipo: { id: createInstalacionDto.equipoId } as any,
       zona: createInstalacionDto.zonaId ? ({ id: createInstalacionDto.zonaId } as any) : null,
-      tecnico: createInstalacionDto.tecnicoId
-        ? ({ id: createInstalacionDto.tecnicoId } as any)
-        : null,
+      tecnico: { id: tecnicoId } as any,
     });
 
     return this.instalacionRepository.save(instalacion);
