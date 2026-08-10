@@ -60,22 +60,25 @@ async generarCodigoEquipo(): Promise<string> {
     return equipo;
   }
 
-  async update(id: number, updateEquipoDto: UpdateEquipoDto) {
-    const equipo = await this.findOne(id);
+async update(id: number, updateEquipoDto: UpdateEquipoDto) {
+  const equipo = await this.findOne(id);
 
-    Object.assign(equipo, {
-      ...updateEquipoDto,
-      tipoEquipo: updateEquipoDto.tipoEquipoId
-        ? { id: updateEquipoDto.tipoEquipoId }
-        : equipo.tipoEquipo,
-      marca: updateEquipoDto.marcaId ? { id: updateEquipoDto.marcaId } : equipo.marca,
-      cliente: updateEquipoDto.clienteId
+  Object.assign(equipo, {
+    ...updateEquipoDto,
+    tipoEquipo: updateEquipoDto.tipoEquipoId
+      ? { id: updateEquipoDto.tipoEquipoId }
+      : equipo.tipoEquipo,
+    marca: updateEquipoDto.marcaId ? { id: updateEquipoDto.marcaId } : equipo.marca,
+    cliente:
+      updateEquipoDto.clienteId === null
+        ? null
+        : updateEquipoDto.clienteId
         ? { id: updateEquipoDto.clienteId }
         : equipo.cliente,
-    });
+  });
 
-    return this.equipoRepository.save(equipo);
-  }
+  return this.equipoRepository.save(equipo);
+}
 
   async remove(id: number) {
     const equipo = await this.findOne(id);

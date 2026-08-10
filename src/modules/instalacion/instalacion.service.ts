@@ -18,40 +18,48 @@ export class InstalacionService {
     private readonly clienteRepository: Repository<Cliente>,
   ) {}
 
-  async create(createInstalacionDto: CreateInstalacionDto, tecnicoId: number) {
-    const instalacion = this.instalacionRepository.create({
-      fechaInstalacion: createInstalacionDto.fechaInstalacion,
-      direccion: createInstalacionDto.direccion,
-      observaciones: createInstalacionDto.observaciones,
-      cliente: { id: createInstalacionDto.clienteId } as any,
-      equipo: { id: createInstalacionDto.equipoId } as any,
-      zona: createInstalacionDto.zonaId ? ({ id: createInstalacionDto.zonaId } as any) : null,
-      tecnico: { id: tecnicoId } as any,
-    });
+async create(createInstalacionDto: CreateInstalacionDto, tecnicoId: number) {
+  const instalacion = this.instalacionRepository.create({
+    fechaInstalacion: createInstalacionDto.fechaInstalacion,
+    direccion: createInstalacionDto.direccion,
+    observaciones: createInstalacionDto.observaciones,
+    cliente: { id: createInstalacionDto.clienteId } as any,
+    equipo: { id: createInstalacionDto.equipoId } as any,
+    zona: createInstalacionDto.zonaId ? ({ id: createInstalacionDto.zonaId } as any) : null,
+    tecnico: { id: tecnicoId } as any,
+  });
 
-    const instalacionGuardada = await this.instalacionRepository.save(instalacion);
+  const instalacionGuardada = await this.instalacionRepository.save(instalacion);
 
-    // 1. Marca el equipo como Instalado y lo asocia al cliente
-    await this.equipoRepository.update(createInstalacionDto.equipoId, {
-      estado: EstadoEquipo.INSTALADO,
-      cliente: { id: createInstalacionDto.clienteId } as any,
-    });
+  const cliente = await this.clienteRepository.findOne({
+    where: { id: createInstalacionDto.clienteId },
+  });
+  const equipo = await this.equipoRepository.findOne({
+    where: { id: createInstalacionDto.equipoId },
+  });
 
-    // 2. Si es la primera instalación del cliente y no tiene fechaInstalacion,
-    //    la completa automáticamente (sin bloquear futuras instalaciones distintas)
-    if (createInstalacionDto.fechaInstalacion) {
-      const cliente = await this.clienteRepository.findOne({
-        where: { id: createInstalacionDto.clienteId },
+  // 1. Marca el equipo como Instalado, lo asocia al cliente, y autocompleta
+  //    pppoeUsuario con el usuario del cliente (solo si el equipo no tenía uno ya)
+  await this.equipoRepository.update(createInstalacionDto.equipoId, {
+    estado: EstadoEquipo.INSTALADO,
+    cliente: { id: createInstalacionDto.clienteId } as any,
+    ...((!equipo?.pppoeUsuario && cliente?.usuario)
+      ? { pppoeUsuario: cliente.usuario }
+      : {}),
+  });
+
+  // 2. Si es la primera instalación del cliente y no tiene fechaInstalacion,
+  //    la completa automáticamente
+  if (createInstalacionDto.fechaInstalacion) {
+    if (cliente && !cliente.fechaInstalacion) {
+      await this.clienteRepository.update(createInstalacionDto.clienteId, {
+        fechaInstalacion: createInstalacionDto.fechaInstalacion,
       });
-      if (cliente && !cliente.fechaInstalacion) {
-        await this.clienteRepository.update(createInstalacionDto.clienteId, {
-          fechaInstalacion: createInstalacionDto.fechaInstalacion,
-        });
-      }
     }
-
-    return instalacionGuardada;
   }
+
+  return instalacionGuardada;
+}
 
   findAll() {
     return this.instalacionRepository.find({
