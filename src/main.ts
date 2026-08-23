@@ -4,7 +4,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
-async function bootstrap() {
+export async function bootstrap() { //cambio 1
   const app = await NestFactory.create(AppModule);
   //habilitando VALIDACION con class-validation
   app.useGlobalPipes(new ValidationPipe());
@@ -25,5 +25,8 @@ async function bootstrap() {
   SwaggerModule.setup('docs', app, documentFactory);
 
   await app.listen(process.env.PORT ?? 3000);
+  return app; //cambio 2
 }
-bootstrap();
+if (require.main === module) { //cambio 3
+  bootstrap();
+}
