@@ -124,9 +124,7 @@ async deudoresConCorte() {
     const efectiva = this.fechaEfectivaVencimiento(c);
     if (!efectiva || efectiva >= hoy) continue;
 
-    let meses = (hoy.getFullYear() - efectiva.getFullYear()) * 12 + (hoy.getMonth() - efectiva.getMonth());
-    if (hoy.getDate() < efectiva.getDate()) meses -= 1;
-    meses = Math.max(meses, 1);
+    const meses = this.mesesDeDeuda(efectiva, hoy);
 
     if (meses < 3) continue;
 
@@ -175,9 +173,8 @@ async deudoresConCorte() {
     if (!efectiva) continue; // sin ningún dato para calcular, se omite
     if (efectiva >= hoy) continue; // al día, no es moroso
 
-    let meses = (hoy.getFullYear() - efectiva.getFullYear()) * 12 + (hoy.getMonth() - efectiva.getMonth());
-    if (hoy.getDate() < efectiva.getDate()) meses -= 1;
-    meses = Math.max(meses, 1);
+        const meses = this.mesesDeDeuda(efectiva, hoy);
+    if (meses < 1) continue;
 
     const precio = c.plan ? Number(c.plan.precioMensual) : 0;
 
@@ -199,7 +196,7 @@ async deudoresConCorte() {
   return resultado;
 }
 
-private fechaEfectivaVencimiento(c: Cliente): Date | null {
+/*private fechaEfectivaVencimiento(c: Cliente): Date | null {
   if (c.proximoVencimiento) return new Date(c.proximoVencimiento);
 
   const base = c.fechaPrimerPago ?? c.fechaInstalacion;
@@ -208,7 +205,33 @@ private fechaEfectivaVencimiento(c: Cliente): Date | null {
   const fecha = new Date(base);
   fecha.setMonth(fecha.getMonth() + 1);
   return fecha;
+}*/
+
+private parseFechaLocal(fecha: string | Date): Date {
+  if (fecha instanceof Date) return fecha;
+  const [y, m, d] = fecha.split('-').map(Number);
+  return new Date(y, m - 1, d);
 }
+
+private fechaEfectivaVencimiento(c: Cliente): Date | null {
+  if (c.proximoVencimiento) return this.parseFechaLocal(c.proximoVencimiento);
+
+  const base = c.fechaPrimerPago ?? c.fechaInstalacion;
+  if (!base) return null;
+
+  const fecha = this.parseFechaLocal(base);
+  fecha.setMonth(fecha.getMonth() + 2); // mismo criterio que pagos.ts
+  fecha.setDate(1);
+  return fecha;
+}
+
+private mesesDeDeuda(efectiva: Date, hoy: Date): number {
+  const totalHoy = hoy.getFullYear() * 12 + hoy.getMonth();
+  const totalEfectiva = efectiva.getFullYear() * 12 + efectiva.getMonth();
+  return totalHoy - totalEfectiva + 1;
+}
+
+
 
 
 @Cron(CronExpression.EVERY_DAY_AT_1AM)
@@ -221,12 +244,7 @@ async actualizarEstadosAutomaticos() {
     const efectiva = this.fechaEfectivaVencimiento(c);
     if (!efectiva) continue; // sin datos suficientes, no se toca
 
-    let meses = 0;
-    if (efectiva < hoy) {
-      meses = (hoy.getFullYear() - efectiva.getFullYear()) * 12 + (hoy.getMonth() - efectiva.getMonth());
-      if (hoy.getDate() < efectiva.getDate()) meses -= 1;
-      meses = Math.max(meses, 1);
-    }
+        const meses = Math.max(this.mesesDeDeuda(efectiva, hoy), 0);
 
     let nuevoEstado: EstadoCliente;
     if (meses <= 1) nuevoEstado = EstadoCliente.ACTIVO;

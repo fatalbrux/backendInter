@@ -55,6 +55,12 @@ export class Cliente {
   @Column({ nullable: true })
   referencia: string;
 
+  @Column({ name: 'latitud', type: 'double precision', nullable: true })
+  latitud: number | null;
+
+  @Column({ name: 'longitud', type: 'double precision', nullable: true })
+  longitud: number | null;
+
   @Column({ name: 'fecha_instalacion', type: 'date', nullable: true })
   fechaInstalacion: string;
 

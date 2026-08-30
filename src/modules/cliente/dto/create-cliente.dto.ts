@@ -5,6 +5,7 @@ import {
   IsEmail,
   IsEnum,
   IsDateString,
+  IsNumber,
 } from 'class-validator';
 import { EstadoCliente } from '../entities/cliente.entity';
 
@@ -65,4 +66,12 @@ export class CreateClienteDto {
   @IsOptional()
   @IsString()
   observaciones?: string;
+
+  @IsOptional()
+  @IsNumber()
+  latitud?: number;
+
+  @IsOptional()
+  @IsNumber()
+  longitud?: number;
 }
