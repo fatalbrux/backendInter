@@ -61,6 +61,9 @@ export class Pago {
   @Column({ nullable: true })
   notas: string;
 
+  @Column({ name: 'comprobante_url', type: 'varchar', nullable: true })
+  comprobanteUrl: string | null;
+
   @CreateDateColumn({ name: 'creado_en' })
   creadoEn: Date;
 }

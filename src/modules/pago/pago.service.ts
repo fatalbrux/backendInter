@@ -5,7 +5,8 @@ import { Pago } from './entities/pago.entity';
 import { Cliente, EstadoCliente } from '../cliente/entities/cliente.entity';
 import { CreatePagoDto } from './dto/create-pago.dto';
 import { UpdatePagoDto } from './dto/update-pago.dto';
-
+import * as fs from 'fs';
+import * as path from 'path';
 @Injectable()
 export class PagoService {
   constructor(
@@ -57,8 +58,11 @@ export class PagoService {
   }
 
   findAll() {
-    return this.pagoRepository.find({ relations: { cliente: true, usuario: true } });
-  }
+  return this.pagoRepository.find({
+    relations: { cliente: true, usuario: true },
+    order: { fechaPago: 'ASC', id: 'ASC' },
+  });
+}
 
   async findOne(id: number) {
     const pago = await this.pagoRepository.findOne({
@@ -86,4 +90,34 @@ export class PagoService {
     const ultimo = await this.pagoRepository.count();
     return `REC-${String(ultimo + 1).padStart(4, '0')}`;
   }
+
+  private getComprobantesDir(): string {
+  let baseDir: string;
+  try {
+    const { app } = require('electron');
+    baseDir = app.getPath('userData');
+  } catch {
+    baseDir = process.env.BACKUP_BASE_DIR || path.join(process.cwd(), 'data');
+  }
+  const dir = path.join(baseDir, 'comprobantes');
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  return dir;
+}
+
+async guardarComprobante(id: number, buffer: Buffer, extension: string): Promise<Pago> {
+  const pago = await this.findOne(id);
+
+  const nombreArchivo = `comprobante-pago-${id}-${Date.now()}${extension}`;
+  fs.writeFileSync(path.join(this.getComprobantesDir(), nombreArchivo), buffer);
+
+  pago.comprobanteUrl = nombreArchivo;
+  return this.pagoRepository.save(pago);
+}
+
+obtenerRutaComprobante(nombreArchivo: string): string {
+  return path.join(this.getComprobantesDir(), nombreArchivo);
+}
+
 }
