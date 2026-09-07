@@ -10,6 +10,7 @@ import {
 import { EstadoCliente } from '../entities/cliente.entity';
 
 export class CreateClienteDto {
+  @IsOptional()
   @IsString()
   codigo: string;
 

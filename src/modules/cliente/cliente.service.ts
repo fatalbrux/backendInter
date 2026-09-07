@@ -12,24 +12,39 @@ export class ClienteService {
     private readonly clienteRepository: Repository<Cliente>,
   ) {}
 
-  async create(createClienteDto: CreateClienteDto) {
-    const existe = await this.clienteRepository.findOne({
-      where: { codigo: createClienteDto.codigo },
-    });
-    if (existe) {
-      throw new ConflictException(
-        `Ya existe un cliente con el código ${createClienteDto.codigo}`,
-      );
-    }
+ async create(createClienteDto: CreateClienteDto) {
+  const codigo = createClienteDto.codigo?.trim() || (await this.generarCodigoCliente());
 
-    const cliente = this.clienteRepository.create({
-      ...createClienteDto,
-      zona: createClienteDto.zonaId ? ({ id: createClienteDto.zonaId } as any) : null,
-      plan: createClienteDto.planId ? ({ id: createClienteDto.planId } as any) : null,
-    });
-
-    return this.clienteRepository.save(cliente);
+  const existe = await this.clienteRepository.findOne({ where: { codigo } });
+  if (existe) {
+    throw new ConflictException(`Ya existe un cliente con el código ${codigo}`);
   }
+
+  const cliente = this.clienteRepository.create({
+    ...createClienteDto,
+    codigo,
+    nombres: createClienteDto.nombres?.toUpperCase(),
+    apellidos: createClienteDto.apellidos?.toUpperCase(),
+    usuario: createClienteDto.usuario ? createClienteDto.usuario.toLowerCase() : createClienteDto.usuario,
+    zona: createClienteDto.zonaId ? ({ id: createClienteDto.zonaId } as any) : null,
+    plan: createClienteDto.planId ? ({ id: createClienteDto.planId } as any) : null,
+  });
+
+  return this.clienteRepository.save(cliente);
+}
+
+private async generarCodigoCliente(): Promise<string> {
+  // Busca el número más alto entre los códigos existentes con formato CLI-#### y le suma 1.
+  // Uso MAX en vez de contar filas, para que no se repita un código aunque se hayan borrado clientes.
+  const resultado = await this.clienteRepository
+    .createQueryBuilder('c')
+    .select(`MAX(CAST(SUBSTRING(c.codigo FROM 'CLI-([0-9]+)') AS INTEGER))`, 'maximo')
+    .where(`c.codigo ~ '^CLI-[0-9]+$'`)
+    .getRawOne();
+
+  const siguiente = (resultado?.maximo ?? 0) + 1;
+  return `CLI-${String(siguiente).padStart(4, '0')}`;
+}
 
   findAll() {
     return this.clienteRepository.find({ relations: { zona: true, plan: true } });
@@ -50,6 +65,9 @@ export class ClienteService {
     const cliente = await this.findOne(id);
     Object.assign(cliente, {
       ...updateClienteDto,
+      ...(updateClienteDto.nombres !== undefined && { nombres: updateClienteDto.nombres.toUpperCase() }),
+    ...(updateClienteDto.apellidos !== undefined && { apellidos: updateClienteDto.apellidos.toUpperCase() }),
+    ...(updateClienteDto.usuario !== undefined && { usuario: updateClienteDto.usuario?.toLowerCase() }),
       zona: updateClienteDto.zonaId ? { id: updateClienteDto.zonaId } : cliente.zona,
       plan: updateClienteDto.planId ? { id: updateClienteDto.planId } : cliente.plan,
     });
